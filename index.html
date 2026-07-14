@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Atendimento e Manutenção SENAC</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <!-- Cabeçalho principal do sistema -->
+    <header class="cabecalho">
+        <div class="marca">
+            <span class="marca-simbolo" aria-hidden="true">S</span>
+            <div>
+                <h1>Central de Atendimento e Manutenção SENAC</h1>
+                <p>Interface acadêmica integrada ao n8n para chamados e agente de IA</p>
+            </div>
+        </div>
+
+        <div class="status-integracao erro" id="indicador-modo" aria-live="polite">
+            Sem fonte de dados
+        </div>
+    </header>
+
+    <div class="estrutura">
+        <!-- Navegação entre as áreas obrigatórias da página -->
+        <nav class="menu-principal" aria-label="Menu principal">
+            <a href="#dashboard" class="link-menu ativo">Dashboard</a>
+            <a href="#novo-chamado" class="link-menu">Novo chamado</a>
+            <a href="#lista-chamados" class="link-menu">Consultar chamados</a>
+            <a href="#dados-sistema" class="link-menu">Dados do sistema</a>
+            <a href="#agente-ia" class="link-menu">Agente de IA</a>
+            <a href="#configuracoes" class="link-menu">Configurações</a>
+        </nav>
+
+        <main class="conteudo">
+            <!-- Dashboard com indicadores gerais da central -->
+            <section id="dashboard" class="secao">
+                <div class="secao-cabecalho">
+                    <div>
+                        <span class="rotulo-secao">Visão geral</span>
+                        <h2>Dashboard</h2>
+                    </div>
+                    <button type="button" class="botao botao-secundario" id="botao-atualizar-lista">
+                        Atualizar chamados
+                    </button>
+                </div>
+
+                <div class="grade-indicadores" aria-label="Indicadores de chamados">
+                    <article class="card-indicador">
+                        <span class="card-titulo">Total de chamados</span>
+                        <strong id="card-total">0</strong>
+                    </article>
+                    <article class="card-indicador">
+                        <span class="card-titulo">Chamados abertos</span>
+                        <strong id="card-abertos">0</strong>
+                    </article>
+                    <article class="card-indicador">
+                        <span class="card-titulo">Em análise</span>
+                        <strong id="card-analise">0</strong>
+                    </article>
+                    <article class="card-indicador">
+                        <span class="card-titulo">Resolvidos</span>
+                        <strong id="card-resolvidos">0</strong>
+                    </article>
+                    <article class="card-indicador destaque-critico">
+                        <span class="card-titulo">Críticos</span>
+                        <strong id="card-criticos">0</strong>
+                    </article>
+                </div>
+            </section>
+
+            <!-- Formulário de abertura de chamados -->
+            <section id="novo-chamado" class="secao">
+                <div class="secao-cabecalho">
+                    <div>
+                        <span class="rotulo-secao">Atendimento</span>
+                        <h2>Cadastro de chamado</h2>
+                    </div>
+                </div>
+
+                <form id="form-chamado" class="formulario">
+                    <div class="grade-formulario">
+                        <div class="campo">
+                            <label for="usuario-id">Usuário solicitante</label>
+                            <select id="usuario-id" name="usuario_id" required>
+                                <option value="">Configure o Supabase para carregar usuários</option>
+                            </select>
+                        </div>
+
+                        <div class="campo">
+                            <label for="setor">Setor</label>
+                            <select id="setor" name="setor_id" required>
+                                <option value="">Configure o Supabase para carregar setores</option>
+                            </select>
+                        </div>
+
+                        <div class="campo">
+                            <label for="categoria">Categoria</label>
+                            <select id="categoria" name="categoria_id" required>
+                                <option value="">Configure o Supabase para carregar categorias</option>
+                            </select>
+                        </div>
+
+                        <div class="campo campo-largo">
+                            <label for="titulo">Título do chamado</label>
+                            <input type="text" id="titulo" name="titulo" required>
+                        </div>
+
+                        <div class="campo">
+                            <label for="prioridade">Prioridade</label>
+                            <select id="prioridade" name="prioridade" required>
+                                <option value="">Selecione</option>
+                                <option>Baixa</option>
+                                <option>Média</option>
+                                <option>Alta</option>
+                                <option>Crítica</option>
+                            </select>
+                        </div>
+
+                        <div class="campo campo-texto">
+                            <label for="descricao">Descrição do chamado</label>
+                            <textarea id="descricao" name="descricao" rows="5" required></textarea>
+                        </div>
+                    </div>
+
+                    <div class="acoes-formulario">
+                        <button type="reset" class="botao botao-neutro">Limpar formulário</button>
+                        <button type="submit" class="botao botao-primario">Cadastrar chamado</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Consulta, filtros e atualização de status dos chamados -->
+            <section id="lista-chamados" class="secao">
+                <div class="secao-cabecalho">
+                    <div>
+                        <span class="rotulo-secao">Operação</span>
+                        <h2>Consulta de chamados</h2>
+                    </div>
+                </div>
+
+                <div class="filtros" id="form-filtros" role="search">
+                    <div class="campo">
+                        <label for="filtro-status">Filtrar por status</label>
+                        <select id="filtro-status">
+                            <option value="">Todos</option>
+                            <option>Aberto</option>
+                            <option>Em análise</option>
+                            <option>Resolvido</option>
+                            <option>Cancelado</option>
+                        </select>
+                    </div>
+
+                    <div class="campo">
+                        <label for="filtro-prioridade">Filtrar por prioridade</label>
+                        <select id="filtro-prioridade">
+                            <option value="">Todas</option>
+                            <option>Baixa</option>
+                            <option>Média</option>
+                            <option>Alta</option>
+                            <option>Crítica</option>
+                        </select>
+                    </div>
+
+                    <div class="campo campo-busca">
+                        <label for="filtro-busca">Buscar por título ou solicitante</label>
+                        <input type="search" id="filtro-busca" placeholder="Ex.: relatório, Maria, laboratório">
+                    </div>
+                </div>
+
+                <div class="tabela-area">
+                    <table class="tabela-chamados">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Título</th>
+                                <th>Solicitante</th>
+                                <th>Setor</th>
+                                <th>Categoria</th>
+                                <th>Prioridade</th>
+                                <th>Status</th>
+                                <th>Abertura</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpo-tabela-chamados"></tbody>
+                    </table>
+
+                    <p class="mensagem-vazia" id="mensagem-lista" hidden>
+                        Nenhum chamado carregado. Configure uma fonte real de dados em n8n ou Supabase.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Gerenciamento completo das tabelas do banco relacional -->
+            <section id="dados-sistema" class="secao">
+                <div class="secao-cabecalho">
+                    <div>
+                        <span class="rotulo-secao">Banco de dados</span>
+                        <h2>Dados do sistema</h2>
+                    </div>
+                </div>
+
+                <div class="painel-dados">
+                    <div class="abas-dados" role="tablist" aria-label="Tabelas do sistema">
+                        <button type="button" class="aba-dados ativa" data-tabela="usuarios">Usuários</button>
+                        <button type="button" class="aba-dados" data-tabela="setores">Setores</button>
+                        <button type="button" class="aba-dados" data-tabela="categorias_chamado">Categorias</button>
+                        <button type="button" class="aba-dados" data-tabela="chamados">Chamados</button>
+                        <button type="button" class="aba-dados" data-tabela="historico_chamados">Histórico</button>
+                        <button type="button" class="aba-dados" data-tabela="base_conhecimento">Base de conhecimento</button>
+                    </div>
+
+                    <p class="texto-ajuda" id="descricao-tabela">
+                        Selecione uma tabela para visualizar, cadastrar, editar ou excluir registros.
+                    </p>
+
+                    <form id="form-registro" class="formulario formulario-dados">
+                        <input type="hidden" id="registro-id">
+                        <div class="grade-formulario" id="campos-registro"></div>
+                        <div class="acoes-formulario">
+                            <button type="button" class="botao botao-neutro" id="botao-novo-registro">Novo registro</button>
+                            <button type="submit" class="botao botao-primario" id="botao-salvar-registro">Salvar registro</button>
+                        </div>
+                    </form>
+
+                    <div class="tabela-area tabela-gerenciamento-area">
+                        <table class="tabela-chamados">
+                            <thead id="cabecalho-tabela-gerenciamento"></thead>
+                            <tbody id="corpo-tabela-gerenciamento"></tbody>
+                        </table>
+                        <p class="mensagem-vazia" id="mensagem-gerenciamento" hidden>
+                            Nenhum registro encontrado para esta tabela.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chat simples para conversar com o agente conectado ao n8n -->
+            <section id="agente-ia" class="secao">
+                <div class="secao-cabecalho">
+                    <div>
+                        <span class="rotulo-secao">Consulta inteligente</span>
+                        <h2>Chat com agente de IA</h2>
+                    </div>
+                </div>
+
+                <div id="chat-manual-area">
+                    <div class="sugestoes-chat" aria-label="Sugestões de perguntas">
+                        <button type="button" class="botao-sugestao" data-pergunta="Quais chamados estão abertos?">Chamados abertos</button>
+                        <button type="button" class="botao-sugestao" data-pergunta="Quais chamados são de prioridade crítica?">Prioridade crítica</button>
+                        <button type="button" class="botao-sugestao" data-pergunta="Quais chamados estão relacionados ao banco de dados?">Banco de dados</button>
+                        <button type="button" class="botao-sugestao" data-pergunta="Quantos chamados existem por status?">Por status</button>
+                        <button type="button" class="botao-sugestao" data-pergunta="Qual setor possui mais chamados?">Setor com mais chamados</button>
+                        <button type="button" class="botao-sugestao" data-pergunta="Mostre um resumo geral da central de atendimento.">Resumo geral</button>
+                        <button type="button" class="botao-sugestao" data-pergunta="Quais chamados precisam de atenção urgente?">Atenção urgente</button>
+                    </div>
+
+                    <div class="chat">
+                        <div class="chat-mensagens" id="chat-mensagens" aria-live="polite">
+                            <div class="mensagem-chat mensagem-sistema">
+                                Olá! Pergunte sobre chamados, setores, categorias, prioridades ou histórico da central.
+                            </div>
+                        </div>
+
+                        <form class="chat-formulario" id="form-chat">
+                            <label for="pergunta-agente" class="sr-only">Mensagem para o agente de IA</label>
+                            <input type="text" id="pergunta-agente" placeholder="Digite sua pergunta para o agente" required>
+                            <button type="submit" class="botao botao-primario">Enviar</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="chat-oficial-area" id="chat-oficial-area" hidden>
+                    <div class="chat-oficial-cabecalho">
+                        <strong>Chat oficial do n8n ativo</strong>
+                        <span>Usando o pacote @n8n/chat conectado ao Chat Trigger configurado.</span>
+                    </div>
+                    <div id="n8n-chat" class="n8n-chat-container"></div>
+                </div>
+            </section>
+
+            <!-- Configuração da URL única do Webhook do n8n -->
+            <section id="configuracoes" class="secao">
+                <div class="secao-cabecalho">
+                    <div>
+                        <span class="rotulo-secao">Integração</span>
+                        <h2>Configurações do n8n</h2>
+                    </div>
+                </div>
+
+                <div class="formulario configuracao-webhook">
+                    <div class="campo">
+                        <label for="webhook-url">URL do Webhook do n8n</label>
+                        <input type="url" id="webhook-url" placeholder="https://seu-n8n.com/webhook/central-senac">
+                        <small class="texto-ajuda">
+                            Use a URL do Webhook que recebe JSON com o campo "acao". A URL pública do chat externo do n8n, geralmente terminada em /chat, não atende às ações de cadastro, listagem e atualização.
+                        </small>
+                    </div>
+
+                    <div class="acoes-formulario">
+                        <button type="button" class="botao botao-primario" id="botao-salvar-url">Salvar URL</button>
+                        <button type="button" class="botao botao-secundario" id="botao-testar-conexao">Testar conexão</button>
+                        <button type="button" class="botao botao-neutro" id="botao-limpar-url">Limpar URL</button>
+                    </div>
+
+                    <div class="separador-configuracao"></div>
+
+                    <div class="campo">
+                        <label for="chat-webhook-url">URL do Chat Trigger do n8n</label>
+                        <input type="url" id="chat-webhook-url" placeholder="https://seu-n8n.com/webhook/id-do-chat/chat">
+                        <small class="texto-ajuda">
+                            Use aqui a URL indicada pelas instruções do @n8n/chat. Esse campo ativa somente o chat oficial do agente de IA.
+                        </small>
+                    </div>
+
+                    <div class="acoes-formulario">
+                        <button type="button" class="botao botao-primario" id="botao-salvar-chat-url">Salvar URL do chat</button>
+                        <button type="button" class="botao botao-neutro" id="botao-limpar-chat-url">Limpar chat oficial</button>
+                    </div>
+
+                    <div class="separador-configuracao"></div>
+
+                    <div class="grade-formulario">
+                        <div class="campo campo-largo">
+                            <label for="supabase-url">URL do projeto Supabase</label>
+                            <input type="url" id="supabase-url" placeholder="https://seu-projeto.supabase.co">
+                        </div>
+
+                        <div class="campo">
+                            <label for="supabase-tabela">Tabela principal</label>
+                            <input type="text" id="supabase-tabela" value="chamados" readonly>
+                            <small class="texto-ajuda">O sistema também carrega usuários, setores, categorias, histórico e base de conhecimento.</small>
+                        </div>
+
+                        <div class="campo campo-largo">
+                            <label for="supabase-anon-key">Chave anon pública do Supabase</label>
+                            <input type="password" id="supabase-anon-key" autocomplete="off" placeholder="Informe somente a chave anon pública">
+                        </div>
+
+                        <div class="campo">
+                            <label for="intervalo-atualizacao">Intervalo de atualização (segundos)</label>
+                            <input type="number" id="intervalo-atualizacao" min="5" max="3600" step="5" value="30">
+                        </div>
+                    </div>
+
+                    <div class="acoes-formulario">
+                        <button type="button" class="botao botao-primario" id="botao-salvar-supabase">Salvar Supabase</button>
+                        <button type="button" class="botao botao-secundario" id="botao-testar-supabase">Testar Supabase</button>
+                        <button type="button" class="botao botao-neutro" id="botao-limpar-supabase">Limpar Supabase</button>
+                    </div>
+
+                    <p class="status-supabase" id="supabase-status">Supabase não configurado.</p>
+
+                    <p class="aviso-seguranca">
+                        A interface pode usar o Webhook do n8n ou a API REST do Supabase com chave anon pública.
+                        Nunca informe service_role, senha de banco, tokens privados ou credenciais administrativas no front-end.
+                    </p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="estado-carregando" id="estado-carregando" hidden>
+        Processando solicitação...
+    </div>
+
+    <div class="toast-container" id="toast-container" aria-live="polite"></div>
+</body>
+</html>
