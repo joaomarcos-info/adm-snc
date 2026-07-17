@@ -211,6 +211,94 @@ button {
     color: var(--cor-erro);
 }
 
+/* Painel de notificações do monitoramento do banco */
+.acoes-notificacoes {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.contador-notificacoes {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #eef4f8;
+    color: var(--cor-primaria-escura);
+    font-weight: 800;
+}
+
+.painel-notificacoes {
+    padding: 18px;
+    background: var(--cor-superficie);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+}
+
+.lista-notificacoes {
+    display: grid;
+    gap: 12px;
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.item-notificacao {
+    padding: 13px 14px;
+    border: 1px solid var(--cor-borda);
+    border-left: 5px solid var(--cor-info);
+    border-radius: var(--raio);
+    background: #ffffff;
+}
+
+.item-notificacao.nao-lida {
+    background: #f7fbff;
+}
+
+.notificacao-adicionado {
+    border-left-color: var(--cor-sucesso);
+}
+
+.notificacao-atualizado {
+    border-left-color: var(--cor-info);
+}
+
+.notificacao-removido {
+    border-left-color: var(--cor-alerta);
+}
+
+.notificacao-cabecalho {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.notificacao-cabecalho time {
+    margin-left: auto;
+    color: var(--cor-texto-suave);
+    font-size: 0.86rem;
+}
+
+.etiqueta-notificacao {
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #eef1f4;
+    color: var(--cor-primaria-escura);
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.item-notificacao p {
+    margin: 8px 0 0;
+    color: var(--cor-texto);
+}
+
 /* Formulários e campos */
 .formulario,
 .tabela-area,
@@ -760,6 +848,25 @@ textarea:focus {
     .secao-cabecalho {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .acoes-notificacoes {
+        justify-content: stretch;
+    }
+
+    .acoes-notificacoes .botao,
+    .contador-notificacoes {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .notificacao-cabecalho {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .notificacao-cabecalho time {
+        margin-left: 0;
     }
 
     .grade-indicadores,
