@@ -27,6 +27,7 @@
         <!-- Navegação entre as áreas obrigatórias da página -->
         <nav class="menu-principal" aria-label="Menu principal">
             <a href="#dashboard" class="link-menu ativo">Dashboard</a>
+            <a href="#notificacoes" class="link-menu">Notificações</a>
             <a href="#novo-chamado" class="link-menu">Novo chamado</a>
             <a href="#lista-chamados" class="link-menu">Consultar chamados</a>
             <a href="#dados-sistema" class="link-menu">Dados do sistema</a>
@@ -68,6 +69,35 @@
                         <span class="card-titulo">Críticos</span>
                         <strong id="card-criticos">0</strong>
                     </article>
+                </div>
+            </section>
+
+            <!-- Notificações geradas quando o monitoramento detecta mudanças no banco -->
+            <section id="notificacoes" class="secao">
+                <div class="secao-cabecalho">
+                    <div>
+                        <span class="rotulo-secao">Monitoramento</span>
+                        <h2>Notificações do banco</h2>
+                    </div>
+                    <div class="acoes-notificacoes">
+                        <span class="contador-notificacoes" id="contador-notificacoes">0 novas</span>
+                        <button type="button" class="botao botao-secundario" id="botao-marcar-notificacoes">
+                            Marcar como lidas
+                        </button>
+                        <button type="button" class="botao botao-neutro" id="botao-limpar-notificacoes">
+                            Limpar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="painel-notificacoes" aria-live="polite">
+                    <p class="texto-ajuda">
+                        As notificações aparecem quando a atualização automática detecta registros criados, editados ou removidos no Supabase.
+                    </p>
+                    <ul class="lista-notificacoes" id="lista-notificacoes"></ul>
+                    <p class="mensagem-vazia" id="mensagem-notificacoes">
+                        Nenhuma alteração detectada nesta sessão.
+                    </p>
                 </div>
             </section>
 
