@@ -7,6 +7,7 @@ const CHAVE_CHAT_WEBHOOK = "senac_n8n_chat_webhook_url";
 const CHAVE_SUPABASE_URL = "senac_supabase_url";
 const CHAVE_SUPABASE_ANON_KEY = "senac_supabase_anon_key";
 const CHAVE_INTERVALO_ATUALIZACAO = "senac_intervalo_atualizacao_segundos";
+const LIMITE_NOTIFICACOES = 30;
 
 // Arquivos oficiais do pacote @n8n/chat carregados apenas quando o chat oficial for ativado.
 const N8N_CHAT_CSS_URL = "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css";
@@ -24,6 +25,9 @@ let ultimaRequisicaoLista = 0;
 let atualizacaoAutomaticaId = null;
 let supabaseConectado = false;
 let tabelaAtual = "usuarios";
+let notificacoesBanco = [];
+let notificacoesNaoLidas = 0;
+let snapshotBanco = null;
 
 // Dados reais carregados do Supabase. Não há dados fictícios no projeto.
 const dadosBanco = {
@@ -122,6 +126,7 @@ function inicializarSistema() {
     carregarUrlChatN8N();
     carregarConfiguracaoSupabase();
     selecionarTabela(tabelaAtual);
+    renderizarNotificacoes();
     listarChamados({ silencioso: true });
 }
 
@@ -140,6 +145,8 @@ function configurarEventos() {
     document.getElementById("botao-salvar-supabase").addEventListener("click", salvarConfiguracaoSupabase);
     document.getElementById("botao-testar-supabase").addEventListener("click", testarConexaoSupabase);
     document.getElementById("botao-limpar-supabase").addEventListener("click", limparConfiguracaoSupabase);
+    document.getElementById("botao-marcar-notificacoes").addEventListener("click", marcarNotificacoesComoLidas);
+    document.getElementById("botao-limpar-notificacoes").addEventListener("click", limparNotificacoes);
 
     document.getElementById("filtro-status").addEventListener("change", aplicarFiltros);
     document.getElementById("filtro-prioridade").addEventListener("change", aplicarFiltros);
@@ -271,6 +278,7 @@ function salvarConfiguracaoSupabase() {
 
     supabaseConectado = false;
     pararAtualizacaoAutomatica();
+    reiniciarMonitoramentoBanco();
     carregarConfiguracaoSupabase();
     mostrarToast("Configuração do Supabase salva. Teste a conexão para confirmar permissões.", "sucesso");
     return true;
@@ -301,6 +309,7 @@ function limparConfiguracaoSupabase() {
     SUPABASE_URL = "";
     SUPABASE_ANON_KEY = "";
     INTERVALO_ATUALIZACAO_SEGUNDOS = 30;
+    reiniciarMonitoramentoBanco();
     limparDadosBanco();
     carregarConfiguracaoSupabase();
     atualizarTelasComDadosAtuais();
@@ -526,6 +535,7 @@ async function listarChamados(opcoes = {}) {
             dadosBanco.chamados = normalizarListaChamados(resposta);
         } else {
             limparDadosBanco();
+            reiniciarMonitoramentoBanco();
             if (!silencioso) {
                 mostrarToast("Nenhuma fonte de dados configurada. Configure n8n ou Supabase.", "info");
             }
@@ -627,6 +637,208 @@ async function carregarTodosDadosSupabase() {
     for (const tabela of tabelas) {
         dadosBanco[tabela] = await listarTabelaSupabase(tabela);
     }
+
+    verificarAlteracoesBanco();
+}
+
+// Compara a versão atual dos dados com a versão anterior carregada do Supabase.
+function verificarAlteracoesBanco() {
+    const snapshotAtual = criarSnapshotBanco();
+
+    if (!snapshotBanco) {
+        snapshotBanco = snapshotAtual;
+        return;
+    }
+
+    const alteracoes = [];
+
+    Object.keys(ESQUEMA_TABELAS).forEach((tabela) => {
+        const registrosAntes = snapshotBanco[tabela] || {};
+        const registrosAgora = snapshotAtual[tabela] || {};
+        const tituloTabela = ESQUEMA_TABELAS[tabela].titulo;
+
+        Object.keys(registrosAgora).forEach((id) => {
+            const registroAtual = registrosAgora[id];
+            const registroAnterior = registrosAntes[id];
+
+            if (!registroAnterior) {
+                alteracoes.push(criarNotificacaoBanco("adicionado", tituloTabela, registroAtual.rotulo));
+                return;
+            }
+
+            if (registroAnterior.assinatura !== registroAtual.assinatura) {
+                alteracoes.push(criarNotificacaoBanco("atualizado", tituloTabela, registroAtual.rotulo));
+            }
+        });
+
+        Object.keys(registrosAntes).forEach((id) => {
+            if (!registrosAgora[id]) {
+                alteracoes.push(criarNotificacaoBanco("removido", tituloTabela, registrosAntes[id].rotulo));
+            }
+        });
+    });
+
+    snapshotBanco = snapshotAtual;
+
+    if (alteracoes.length > 0) {
+        registrarNotificacoes(alteracoes);
+    }
+}
+
+// Cria uma fotografia simples dos registros para detectar criação, edição e exclusão.
+function criarSnapshotBanco() {
+    const snapshot = {};
+
+    Object.keys(ESQUEMA_TABELAS).forEach((tabela) => {
+        snapshot[tabela] = {};
+
+        dadosBanco[tabela].forEach((registro) => {
+            if (registro.id === undefined || registro.id === null) {
+                return;
+            }
+
+            snapshot[tabela][String(registro.id)] = {
+                assinatura: criarAssinaturaRegistro(registro),
+                rotulo: obterRotuloRegistro(tabela, registro)
+            };
+        });
+    });
+
+    return snapshot;
+}
+
+// Gera uma assinatura estável de um registro, independentemente da ordem das chaves.
+function criarAssinaturaRegistro(registro) {
+    return JSON.stringify(ordenarValorParaAssinatura(registro));
+}
+
+// Ordena objetos e listas para que a comparação detecte apenas mudanças reais de valor.
+function ordenarValorParaAssinatura(valor) {
+    if (Array.isArray(valor)) {
+        return valor.map(ordenarValorParaAssinatura);
+    }
+
+    if (valor && typeof valor === "object") {
+        return Object.keys(valor)
+            .sort()
+            .reduce((objetoOrdenado, chave) => {
+                objetoOrdenado[chave] = ordenarValorParaAssinatura(valor[chave]);
+                return objetoOrdenado;
+            }, {});
+    }
+
+    return valor ?? null;
+}
+
+// Monta uma notificação de alteração detectada no banco.
+function criarNotificacaoBanco(tipo, tabela, rotuloRegistro) {
+    const acoes = {
+        adicionado: "Novo registro",
+        atualizado: "Registro atualizado",
+        removido: "Registro removido"
+    };
+
+    return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        tipo,
+        tabela,
+        titulo: acoes[tipo],
+        mensagem: `${acoes[tipo]} em ${tabela}: ${rotuloRegistro}`,
+        dataHora: new Date().toISOString(),
+        lida: false
+    };
+}
+
+// Adiciona novas notificações à lista exibida para o administrador.
+function registrarNotificacoes(novasNotificacoes) {
+    notificacoesBanco = [...novasNotificacoes, ...notificacoesBanco].slice(0, LIMITE_NOTIFICACOES);
+    notificacoesNaoLidas = notificacoesBanco.filter((notificacao) => !notificacao.lida).length;
+    renderizarNotificacoes();
+
+    const mensagem = novasNotificacoes.length === 1
+        ? "1 alteração detectada no banco de dados."
+        : `${novasNotificacoes.length} alterações detectadas no banco de dados.`;
+
+    mostrarToast(mensagem, "info");
+}
+
+// Renderiza o painel com as últimas notificações do banco.
+function renderizarNotificacoes() {
+    const lista = document.getElementById("lista-notificacoes");
+    const mensagem = document.getElementById("mensagem-notificacoes");
+    const contador = document.getElementById("contador-notificacoes");
+    const botaoMarcar = document.getElementById("botao-marcar-notificacoes");
+    const botaoLimpar = document.getElementById("botao-limpar-notificacoes");
+
+    if (!lista || !mensagem || !contador) {
+        return;
+    }
+
+    lista.innerHTML = "";
+    mensagem.hidden = notificacoesBanco.length > 0;
+    contador.textContent = notificacoesNaoLidas === 1
+        ? "1 nova"
+        : `${notificacoesNaoLidas} novas`;
+
+    if (botaoMarcar) {
+        botaoMarcar.disabled = notificacoesNaoLidas === 0;
+    }
+
+    if (botaoLimpar) {
+        botaoLimpar.disabled = notificacoesBanco.length === 0;
+    }
+
+    notificacoesBanco.forEach((notificacao) => {
+        lista.appendChild(criarItemNotificacao(notificacao));
+    });
+}
+
+// Cria o item visual de uma notificação.
+function criarItemNotificacao(notificacao) {
+    const item = document.createElement("li");
+    const cabecalho = document.createElement("div");
+    const titulo = document.createElement("strong");
+    const data = document.createElement("time");
+    const mensagem = document.createElement("p");
+    const etiqueta = document.createElement("span");
+
+    item.className = `item-notificacao notificacao-${classeTexto(notificacao.tipo)}`;
+    item.classList.toggle("nao-lida", !notificacao.lida);
+
+    cabecalho.className = "notificacao-cabecalho";
+    etiqueta.className = "etiqueta-notificacao";
+    etiqueta.textContent = notificacao.tipo;
+    titulo.textContent = notificacao.titulo;
+    data.dateTime = notificacao.dataHora;
+    data.textContent = formatarData(notificacao.dataHora);
+    mensagem.textContent = notificacao.mensagem;
+
+    cabecalho.append(etiqueta, titulo, data);
+    item.append(cabecalho, mensagem);
+
+    return item;
+}
+
+// Marca todas as notificações atuais como lidas.
+function marcarNotificacoesComoLidas() {
+    notificacoesBanco = notificacoesBanco.map((notificacao) => ({
+        ...notificacao,
+        lida: true
+    }));
+    notificacoesNaoLidas = 0;
+    renderizarNotificacoes();
+}
+
+// Limpa a lista de notificações exibida na tela.
+function limparNotificacoes() {
+    notificacoesBanco = [];
+    notificacoesNaoLidas = 0;
+    renderizarNotificacoes();
+}
+
+// Reinicia a referência usada para comparar alterações no banco.
+function reiniciarMonitoramentoBanco() {
+    snapshotBanco = null;
 }
 
 // Lista uma tabela inteira pela API REST do Supabase.
